@@ -4,7 +4,9 @@
   "type": "module",
   "description": "",
   "main": "app.js",
+  "packageManager": "pnpm@9.0.0",
   "scripts": {
+    "prepare": "corepack enable",
     "start": "node dist/app.js",
     "start:dev": "tsc-watch --noClear -p ./tsconfig.json --onSuccess \"node ./dist/app.js\"",
     "mikro-orm": "mikro-orm",
