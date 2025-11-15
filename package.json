@@ -5,7 +5,7 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "start": "pnpm start:dev",
+    "start": "node dist/app.js",
     "start:dev": "tsc-watch --noClear -p ./tsconfig.json --onSuccess \"node ./dist/app.js\"",
     "mikro-orm": "mikro-orm",
     "create-db": "mikro-orm schema:create",
@@ -18,14 +18,15 @@
     "test:unit": "jest --runInBand",
     "test:integration": "jest tests/integration --verbose --forceExit",
     "test:login": "jest tests/integration/auth-login.test.ts --verbose --forceExit",
-    "dev:test": "pnpm dev & sleep 3 && pnpm test:login",
+    "dev:test": "pnpm dev & sleep 3 && pnpm test:login"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@mikro-orm/core": "6.4.16",
-    "@mikro-orm/mysql": "^6.4.16",
+    "@mikro-orm/migrations": "6.4.16",
+    "@mikro-orm/mysql": "6.4.16",
     "@mikro-orm/sql-highlighter": "1.0.1",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
