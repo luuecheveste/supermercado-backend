@@ -23,7 +23,12 @@ app.use((req, res, next) => {
   RequestContext.create(orm.em, next)
 })
 
-app.use(cors());
+app.use(cors({
+  origin: 'https://supermercado-front-js.vercel.app', // URL de tu frontend
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true, 
+}));
+
 
 app.use("/api/auth", authRouter)
 app.use('/api/cliente', clienteRouter)
