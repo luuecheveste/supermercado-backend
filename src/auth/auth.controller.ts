@@ -7,7 +7,7 @@ import jwt from "jsonwebtoken" //libreria para manejar token JWT
 
 const em = orm.em
 const JWT_SECRET = process.env.JWT_SECRET;
-if (!process.env.JWT_SECRET) {
+if (!JWT_SECRET) {
   console.error("JWT_SECRET no definida en las variables de entorno");
 }
 
