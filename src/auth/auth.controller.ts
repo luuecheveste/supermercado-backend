@@ -81,34 +81,47 @@ class AuthController {
 
   async login(req: Request, res: Response) {
     try {
-      const { usuario, contraseña } = req.body
-      console.log("Datos recibidos:", { usuario, contraseña })
-
+      const { usuario, contraseña } = req.body;
+      console.log("Datos recibidos en login:", { usuario, contraseña });
+  
       // Validar campos requeridos
       if (!usuario || !contraseña) {
         return res.status(400).json({
           message: "Usuario y contraseña son requeridos",
-        })
+        });
       }
-
+  
       // Buscar cliente por usuario
-      const cliente = await em.findOne(Cliente, { usuario })
-      console.log("Cliente encontrado:", cliente ? "Sí" : "No")
+      const cliente = await em.findOne(Cliente, { usuario });
+      console.log("Cliente encontrado:", cliente ? "Sí" : "No");
+  
       if (!cliente) {
         return res.status(401).json({
           message: "Credenciales inválidas",
-        })
+        });
       }
-
+  
+      if (!cliente.contraseña) {
+        console.error("Cliente no tiene contraseña almacenada en DB");
+        return res.status(500).json({ message: "Error interno del servidor" });
+      }
+  
       // Verificar contraseña
-      const passwordValida = await bcrypt.compare(contraseña, cliente.contraseña)
-      console.log("Contraseña válida:", passwordValida)
+      const passwordValida = await bcrypt.compare(contraseña, cliente.contraseña);
+      console.log("Contraseña válida:", passwordValida);
+  
       if (!passwordValida) {
         return res.status(401).json({
           message: "Credenciales inválidas",
-        })
+        });
       }
-
+  
+      // Verificar que JWT_SECRET esté definido
+      if (!JWT_SECRET) {
+        console.error("JWT_SECRET no definida en las variables de entorno");
+        return res.status(500).json({ message: "Error interno del servidor" });
+      }
+  
       // Generar token JWT
       const token = jwt.sign(
         {
@@ -118,20 +131,21 @@ class AuthController {
           apellido: cliente.apellido,
           rol: cliente.rol,
           zona: cliente.zona ? { id: cliente.zona.id, name: cliente.zona.name } : null,
-        }, //payload(información del cliente)
-        JWT_SECRET!, //Secret(firma del token)
-        { expiresIn: "20m" },//Tieempo de expiración del token, una vez cumplido el tienmo se debera volver a iniciar sesion
-      )
-
+        },
+        JWT_SECRET,
+        { expiresIn: "20m" }
+      );
+  
       res.json({
         message: "Login exitoso",
         token,
-      })
+      });
     } catch (error) {
-      console.error("Error en login:", error)
-      res.status(500).json({ message: "Error interno del servidor" })
+      console.error("Error en login:", error);
+      res.status(500).json({ message: "Error interno del servidor" });
     }
   }
+  
 }
 
 export const authController = new AuthController()
