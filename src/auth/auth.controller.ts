@@ -6,7 +6,11 @@ import bcrypt from "bcrypt" //libreria para encriptar contraseñas
 import jwt from "jsonwebtoken" //libreria para manejar token JWT
 
 const em = orm.em
-const JWT_SECRET = process.env.JWT_SECRET || "tu-clave-secreta-aqui"
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!process.env.JWT_SECRET) {
+  console.error("JWT_SECRET no definida en las variables de entorno");
+}
+
 
 class AuthController {
   async register(req: Request, res: Response) {
@@ -115,7 +119,7 @@ class AuthController {
           rol: cliente.rol,
           zona: cliente.zona ? { id: cliente.zona.id, name: cliente.zona.name } : null,
         }, //payload(información del cliente)
-        JWT_SECRET, //Secret(firma del token)
+        JWT_SECRET!, //Secret(firma del token)
         { expiresIn: "20m" },//Tieempo de expiración del token, una vez cumplido el tienmo se debera volver a iniciar sesion
       )
 

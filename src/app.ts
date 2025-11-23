@@ -49,7 +49,7 @@ await syncSchema()
 const PORT = process.env.PORT || 3000; // usa el puerto de Railway, o 3000 en local
 
 const server = app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}/`);
+  console.log(`Server running on port ${PORT}`);
 });
 
 // Exporta la app para testing
