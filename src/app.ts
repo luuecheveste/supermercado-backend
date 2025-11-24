@@ -24,7 +24,8 @@ app.use((req, res, next) => {
 })
 
 app.use(cors({
-  origin: 'https://supermercado-front-js.vercel.app', // URL de tu frontend
+  origin: 
+  'https://supermercado-front-js.vercel.app', // URL de tu frontend en producción
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true, 
 }));

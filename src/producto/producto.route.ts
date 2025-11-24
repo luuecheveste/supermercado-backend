@@ -3,7 +3,7 @@ import { sanitizeProductoInput, findAll, findOne, add, update, remove, countStoc
 
 export const productoRouter = Router()
 productoRouter.get('/', findAll)
-productoRouter.get('/stockTotal', countStock)
+productoRouter.get('/stocktotal', countStock)
 productoRouter.get('/searchCat', findByCategoriaStart)
 productoRouter.get('/search', findByNameStart)
 productoRouter.get('/:id', findOne)

@@ -2,9 +2,9 @@ import { MercadoPagoConfig, Preference } from "mercadopago";
 import { Request, Response } from "express";
 import "dotenv/config";
 
-// Configuración global con el token de producción (APP_USR)
+
 const client = new MercadoPagoConfig({
-  accessToken: process.env.MP_ACCESS_TOKEN_PROD as string, // APP_USR token
+  accessToken: process.env.MP_ACCESS_TOKEN_PROD as string,
 });
 
 export const createPreference = async (req: Request, res: Response) => {
@@ -22,27 +22,29 @@ export const createPreference = async (req: Request, res: Response) => {
     const result = await preference.create({
       body: {
         items: items.map((item: any, index: number) => ({
-          id: String (index),
+          id: `item-${index}`,
           title: item.title,
-          quantity: item.quantity,
-          unit_price: item.price,
+          quantity: Number(item.quantity),
+          unit_price: Number(item.price),
+          currency_id: "ARS",   
         })),
         back_urls: {
           success: `${process.env.FRONT_URL}/success`,
           failure: `${process.env.FRONT_URL}/failure`,
           pending: `${process.env.FRONT_URL}/pending`,
         },
-        auto_return: "approved", // redirige automáticamente al usuario tras el pago aprobado
+        auto_return: "approved",
       },
     });
 
     return res.status(200).json({
       id: result.id,
       init_point: result.init_point,
-      sandbox_init_point: result.sandbox_init_point, // opcional, solo para pruebas
     });
   } catch (error: any) {
     console.error("Error creando preferencia:", error);
-    return res.status(500).json({ error: error.message || "Error interno al crear la preferencia" });
+    return res.status(500).json({
+      error: error.message || "Error interno al crear la preferencia",
+    });
   }
 };
