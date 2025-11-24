@@ -105,12 +105,14 @@ async function remove(req: Request, res: Response) {
 
 async function countStock(req: Request, res: Response) {
   try {
-    const result = await em.execute('SELECT SUM(stock) as totalStock FROM producto')
-    const totalStock = Number(result[0]?.totalStock ?? 0)
+    const result = await em.execute('SELECT SUM(stock) as totalStock FROM producto');
+    const totalStock = Number(result[0]?.totalStock ?? 0);
+    const data = [{ totalStock }]; // devuelve un array con un objeto
 
-    res.status(200).json({ message: 'total stock', data: totalStock })
+    res.status(200).json({ message: 'total stock', data });
   } catch (error: any) {
-    res.status(500).json({ message: error.message })
+    console.error('Error en countStock:', error);
+    res.status(500).json({ message: error.message, data: [] }); // siempre devuelve array
   }
 }
 
