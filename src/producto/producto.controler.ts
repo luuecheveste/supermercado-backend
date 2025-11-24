@@ -107,15 +107,13 @@ async function countStock(req: Request, res: Response) {
   try {
     const result = await em.execute('SELECT SUM(stock) as totalStock FROM producto');
     const totalStock = Number(result[0]?.totalStock ?? 0);
-    const data = [{ totalStock }]; // devuelve un array con un objeto
 
-    res.status(200).json({ message: 'total stock', data });
+    res.status(200).json(totalStock); // <- devuelve el número directo
   } catch (error: any) {
     console.error('Error en countStock:', error);
-    res.status(500).json({ message: error.message, data: [] }); // siempre devuelve array
+    res.status(500).json(0); // si hay error, devuelvo 0
   }
 }
-
 
 function rutaUpload(req: Request, res: Response, next: NextFunction) {
   console.log('rutaUpload ejecutándose...');
