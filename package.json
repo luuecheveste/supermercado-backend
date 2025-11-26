@@ -6,7 +6,8 @@
   "main": "app.js",
   "scripts": {
     "start": "node ./dist/app.js",
-    "start:dev": "pnpm exec tsc-watch --noClear -p ./tsconfig.json --onSuccess \"node ./dist/app.js\"",
+    "start:dev": "npx tsc-watch --noClear -p ./tsconfig.json --onSuccess \"node ./dist/app.js\"",
+
     "mikro-orm": "mikro-orm",
     "create-db": "mikro-orm schema:create",
     "refresh-db": "mikro-orm schema:refresh",
