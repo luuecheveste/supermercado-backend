@@ -4,13 +4,14 @@ export const orm = await MikroORM.init({
   entities: ['dist/**/*.entity.js'],
   entitiesTs: ['src/**/*.entity.ts'],
   dbName: 'supermercado',
-  clientUrl: process.env.DATABASE_URL,
+  clientUrl: process.env.DATABASE_URL, 
   driverOptions: {
+
     ssl: {
-      rejectUnauthorized: true, // fuerza TLS seguro
+      rejectUnauthorized: true,     
     },
+    debug: true,
   },
-  debug: true,
   schemaGenerator: {
     disableForeignKeys: true,
     createForeignKeyConstraints: true,
