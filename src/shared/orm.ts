@@ -6,7 +6,9 @@ export const orm = await MikroORM.init({
   dbName: 'supermercado',
   clientUrl: process.env.DATABASE_URL,
   driverOptions: {
-    ssl: true, // confiamos en los certificados del sistema
+    ssl: {
+      rejectUnauthorized: true, // fuerza TLS seguro
+    },
   },
   debug: true,
   schemaGenerator: {
