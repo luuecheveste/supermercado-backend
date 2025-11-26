@@ -8,7 +8,7 @@ export const orm = await MikroORM.init({
   driverOptions: {
 
     ssl: {
-      rejectUnauthorized: true,     
+      minVersion: 'TLSv1.2',     
     },
     debug: true,
   },
