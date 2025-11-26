@@ -1,12 +1,16 @@
-import { MikroORM } from '@mikro-orm/mysql'
-import { SqlHighlighter } from '@mikro-orm/sql-highlighter'
+import { MikroORM } from '@mikro-orm/mysql';
+import fs from 'fs';
+
+const sslCA = fs.readFileSync('./ca.pem');
 
 export const orm = await MikroORM.init({
   entities: ['dist/**/*.entity.js'],
   entitiesTs: ['src/**/*.entity.ts'],
-  dbName: 'railway',
+  dbName: 'supermercado',
   clientUrl: process.env.DATABASE_URL || 'mysql://root:Root123!@localhost:3306/supermercado',
-  highlighter: new SqlHighlighter(),
+  driverOptions: {
+    ssl: true,
+  },
   debug: true,
   schemaGenerator: {
     disableForeignKeys: true,
