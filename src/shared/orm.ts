@@ -1,26 +1,26 @@
 import { MikroORM } from '@mikro-orm/mysql';
+import { TsMorphMetadataProvider } from '@mikro-orm/reflection';
 
 export const orm = await MikroORM.init({
-  // Entidades compiladas (dist)
   entities: ['dist/**/*.entity.js'],
-  // Entidades en desarrollo (ts)
   entitiesTs: ['src/**/*.entity.ts'],
 
-  // TiDB Serverless usa mysqls:// y requiere SSL sí o sí.
+  metadataProvider: TsMorphMetadataProvider,
+
   clientUrl: process.env.DATABASE_URL,
-  dbName: 'supermercado',
 
   driverOptions: {
-    ssl: {
-      rejectUnauthorized: false,  // NECESARIO en Render + TiDB
-      minVersion: 'TLSv1.2',
+    connection: {
+      ssl: {
+        rejectUnauthorized: false,    // OBLIGATORIO en Render + TiDB
+      },
     },
   },
 
   debug: true,
 
   schemaGenerator: {
-    disableForeignKeys: true,
+    disableForeignKeys: false,
     createForeignKeyConstraints: true,
   },
 });
