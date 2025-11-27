@@ -1,11 +1,9 @@
 import { MikroORM } from '@mikro-orm/mysql';
-import { TsMorphMetadataProvider } from '@mikro-orm/reflection';
+
 
 export const orm = await MikroORM.init({
   entities: ['dist/**/*.entity.js'],
   entitiesTs: ['src/**/*.entity.ts'],
-
-  metadataProvider: TsMorphMetadataProvider,
 
   clientUrl: process.env.DATABASE_URL,
 
