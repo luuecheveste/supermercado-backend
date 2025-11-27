@@ -3,15 +3,19 @@ import { MikroORM } from '@mikro-orm/mysql';
 export const orm = await MikroORM.init({
   entities: ['dist/**/*.entity.js'],
   entitiesTs: ['src/**/*.entity.ts'],
-  dbName: 'supermercado',
-  clientUrl: process.env.DATABASE_URL, 
-  driverOptions: {
 
+  clientUrl: process.env.DATABASE_URL,  // TiDB ya te da todo en la URL
+  dbName: 'supermercado',
+
+  //
+  driverOptions: {
     ssl: {
-      minVersion: 'TLSv1.2',     
+      rejectUnauthorized: false,   // OBLIGATORIO en Render + TiDB
     },
-    debug: true,
   },
+
+  debug: true,
+
   schemaGenerator: {
     disableForeignKeys: true,
     createForeignKeyConstraints: true,
