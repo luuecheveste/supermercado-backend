@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express'
 import { Distribuidor } from './distribuidor.entity.js'
+import { Zona } from '../zona/zona.entity.js'; 
 import {orm} from '../shared/orm.js'
 
 const em = orm.em
