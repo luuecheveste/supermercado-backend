@@ -68,11 +68,17 @@ async function findByZona(req: Request, res: Response) {
 
 async function add(req: Request, res: Response) {
   try {
-    const distribuidor = em.create(Distribuidor, req.body.sanitizedInput)
-    await em.flush()
-    res.status(201).json({ message: 'distribuidor created', data: distribuidor })
+    // Convertimos zonaId en referencia real
+    const zonaRef = em.getReference(Zona, req.body.sanitizedInput.zona);
+    const distribuidor = em.create(Distribuidor, {
+      ...req.body.sanitizedInput,
+      zona: zonaRef
+    });
+    await em.flush();
+    res.status(201).json({ message: 'Distribuidor creado', data: distribuidor });
   } catch (error: any) {
-    res.status(500).json({ message: error.message })
+    console.error('Error DistribuidorController.add:', error);
+    res.status(500).json({ message: error.message });
   }
 }
 

@@ -49,11 +49,12 @@ async function findOne(req: Request, res: Response) {
 
 async function add(req: Request, res: Response) {
   try {
-    const zona = em.create(Zona, req.body.sanitizedInput)
-    await em.flush()
-    res.status(201).json({ message: 'zona created', data: zona })
+    const zona = em.create(Zona, req.body.sanitizedInput);
+    await em.flush();
+    res.status(201).json({ message: 'Zona creada', data: zona });
   } catch (error: any) {
-    res.status(500).json({ message: error.message })
+    console.error('Error ZonaController.add:', error);
+    res.status(500).json({ message: error.message });
   }
 }
 
