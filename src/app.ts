@@ -27,7 +27,7 @@ app.use((req, res, next) => {
 app.use(
   cors({
     origin: 'https://supermercado-front-js.vercel.app',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true,
   })
 );
