@@ -1,6 +1,5 @@
 import { MikroORM } from '@mikro-orm/mysql';
 
-
 export const orm = await MikroORM.init({
   entities: ['dist/**/*.entity.js'],
   entitiesTs: ['src/**/*.entity.ts'],
@@ -10,7 +9,7 @@ export const orm = await MikroORM.init({
   driverOptions: {
     connection: {
       ssl: {
-        rejectUnauthorized: false,    // OBLIGATORIO en Render + TiDB
+        rejectUnauthorized: false, // Requerido en Render (TiDB/MySQL)
       },
     },
   },
@@ -25,5 +24,5 @@ export const orm = await MikroORM.init({
 
 export const syncSchema = async () => {
   const generator = orm.getSchemaGenerator();
-  await generator.updateSchema();
+  await generator.updateSchema();  // NO borra nada, solo crea/actualiza
 };
