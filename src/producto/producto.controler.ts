@@ -92,14 +92,21 @@ async function update(req: Request, res: Response) {
 
 async function remove(req: Request, res: Response) {
   try {
-    const id = Number(req.params.id)
-    if (!id || isNaN(id)) return res.status(400).json({ message: 'ID inválido' })
+    const id = Number(req.params.id);
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ message: "ID inválido" });
+    }
+    // Buscar el producto REAL en la base
+    const producto = await em.findOne(Producto, { id });
+    if (!producto) {
+      return res.status(404).json({ message: "Producto no encontrado" });
+    }
+    await em.removeAndFlush(producto);
 
-    const producto = em.getReference(Producto, id)
-    await em.removeAndFlush(producto)
-    res.status(200).json({ message: 'producto removed' })
+    res.status(200).json({ message: "Producto eliminado" });
   } catch (error: any) {
-    res.status(500).json({ message: error.message })
+    console.error("Error eliminando producto:", error);
+    res.status(500).json({ message: error.message });
   }
 }
 
