@@ -7,7 +7,7 @@ export const productoRouter = Router();
 productoRouter.get("/", findAll);
 productoRouter.get("/buscar", findByNameStart);
 productoRouter.get("/categoria", findByCategoriaStart);
-productoRouter.get("/stock/total", countStock);
+productoRouter.get("/stocktotal", countStock);
 productoRouter.get("/:id", findOne);
 productoRouter.post("/", sanitizeProductoInput, add);
 productoRouter.put("/:id", rutaUpload, sanitizeProductoInput, update);
