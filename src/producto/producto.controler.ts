@@ -3,27 +3,28 @@ import { orm } from '../shared/orm.js';
 import { Producto } from './producto.entity.js';
 import multer from 'multer';
 import fs from 'fs';
+import path from 'path';
 
 const em = orm.em;
 
+// --- Configuración Multer ---
+const uploadPath = path.join(__dirname, '../../supermercado-front-js/public/imagenes');
+if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
 
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadPath = '../supermercado-front-js/public/imagenes/';
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    cb(null, uploadPath);
-  },
-  filename: function (req, file, cb) {
-    cb(null, file.originalname);
-  }
+  destination: (req, file, cb) => cb(null, uploadPath),
+  filename: (req, file, cb) => cb(null, file.originalname),
 });
 
-const upload = multer({ storage });
-export const rutaUpload = upload.single("imagen");
+const fileFilter = (req: Request, file: Express.Multer.File, cb: (error: Error | null, acceptFile?: boolean) => void) => {
+  if (file.mimetype.startsWith('image/')) cb(null, true);
+  else cb(new Error('Solo se permiten archivos de imagen'), false);
+};
 
+const upload = multer({ storage, fileFilter });
+const rutaUpload = upload.single('imagen');
 
+// --- Sanitizar input ---
 function sanitizeProductoInput(req: Request, res: Response, next: NextFunction) {
   req.body.sanitizedInput = {
     name: req.body.name,
@@ -36,49 +37,43 @@ function sanitizeProductoInput(req: Request, res: Response, next: NextFunction) 
   };
 
   Object.keys(req.body.sanitizedInput).forEach((key) => {
-    if (req.body.sanitizedInput[key] === undefined) {
-      delete req.body.sanitizedInput[key];
-    }
+    if (req.body.sanitizedInput[key] === undefined) delete req.body.sanitizedInput[key];
   });
 
   next();
 }
 
-
+// --- CRUD Productos ---
 async function findAll(req: Request, res: Response) {
   try {
     const productos = await em.find(Producto, {}, { populate: ['categoria'] });
-    res.status(200).json({ message: 'found all productos', data: productos });
+    res.status(200).json({ message: 'Productos encontrados', data: productos });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
 }
-
 
 async function findOne(req: Request, res: Response) {
   try {
     const id = Number(req.params.id);
-    if (!id || isNaN(id)) {
-      return res.status(400).json({ message: 'ID inválido' });
-    }
+    if (!id || isNaN(id)) return res.status(400).json({ message: 'ID inválido' });
+
     const producto = await em.findOneOrFail(Producto, { id }, { populate: ['categoria'] });
-    res.status(200).json({ message: 'found producto', data: producto });
+    res.status(200).json({ message: 'Producto encontrado', data: producto });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
 }
-
 
 async function add(req: Request, res: Response) {
   try {
     const producto = em.create(Producto, req.body.sanitizedInput);
     await em.flush();
-    res.status(201).json({ message: 'producto created', data: producto });
+    res.status(201).json({ message: 'Producto creado', data: producto });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
 }
-
 
 async function update(req: Request, res: Response) {
   try {
@@ -86,15 +81,27 @@ async function update(req: Request, res: Response) {
     if (!id || isNaN(id)) return res.status(400).json({ message: 'ID inválido' });
 
     const productoToUpdate = await em.findOneOrFail(Producto, { id });
+
+    // --- Manejo de imagen ---
+    // Si nos envían imagen = vacio -> eliminar imagen existente
+    if ('imagen' in req.body.sanitizedInput) {
+      const newImagen = req.body.sanitizedInput.imagen;
+      if (newImagen === null && productoToUpdate.imagen) {
+        const oldPath = path.join(uploadPath, path.basename(productoToUpdate.imagen));
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+        productoToUpdate.imagen = '';
+      }
+    }
+
+    // Asignar demás campos
     em.assign(productoToUpdate, req.body.sanitizedInput);
     await em.flush();
 
-    res.status(200).json({ message: 'producto updated', data: productoToUpdate });
+    res.status(200).json({ message: 'Producto actualizado', data: productoToUpdate });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
 }
-
 
 async function remove(req: Request, res: Response) {
   try {
@@ -104,63 +111,67 @@ async function remove(req: Request, res: Response) {
     const producto = await em.findOne(Producto, { id });
     if (!producto) return res.status(404).json({ message: 'Producto no encontrado' });
 
+    // Eliminar imagen si existe
+    if (producto.imagen) {
+      const oldPath = path.join(uploadPath, path.basename(producto.imagen));
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    }
+
     await em.removeAndFlush(producto);
     res.status(200).json({ message: 'Producto eliminado' });
   } catch (error: any) {
-    console.error(error);
     res.status(500).json({ message: error.message });
   }
 }
 
-
+// --- Stock total ---
 async function countStock(req: Request, res: Response) {
   try {
     const result = await em.execute('SELECT SUM(stock) as stocktotal FROM producto');
     const stocktotal = Number(result[0]?.stocktotal ?? 0);
-
     res.status(200).json({ stocktotal });
   } catch (error: any) {
-    console.error('Error en countStock:', error);
     res.status(500).json({ stocktotal: 0 });
   }
 }
 
-export const subirImagenProducto = async (req: Request, res: Response) => {
+// --- Subir o reemplazar imagen ---
+async function subirImagenProducto(req: Request, res: Response) {
   try {
-    const id = req.params.id;
-
+    const id = Number(req.params.id);
     if (!id) return res.status(400).json({ message: 'ID de producto requerido' });
     if (!req.file) return res.status(400).json({ message: 'No se subió ninguna imagen' });
 
-    const producto = await em.findOne(Producto, { id: Number(id) });
+    const producto = await em.findOne(Producto, { id });
     if (!producto) return res.status(404).json({ message: 'Producto no encontrado' });
 
+    // --- Eliminar imagen anterior si existe ---
+    if (producto.imagen) {
+      const oldPath = path.join(uploadPath, path.basename(producto.imagen));
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    }
+
+    // --- Guardar la nueva imagen ---
     producto.imagen = `/imagenes/${req.file.filename}`;
     await em.flush();
 
-    return res.json({
-      message: 'Imagen subida y asociada',
+    res.json({
+      message: 'Imagen subida y reemplazada',
       filename: req.file.filename,
-      imagen: producto.imagen
+      imagen: producto.imagen,
     });
   } catch (err: any) {
-    console.error(err);
     res.status(500).json({ message: err.message });
   }
-};
+}
 
-
+// --- Buscar ---
 async function findByNameStart(req: Request, res: Response) {
   try {
     const { q } = req.query;
-    if (!q || typeof q !== 'string') {
-      return res.status(400).json({ message: 'El parámetro "q" es requerido' });
-    }
+    if (!q || typeof q !== 'string') return res.status(400).json({ message: 'El parámetro "q" es requerido' });
 
-    const productos = await em.find(Producto, {
-      $or: [{ name: { $like: `${q}%` } }]
-    });
-
+    const productos = await em.find(Producto, { $or: [{ name: { $like: `${q}%` } }] });
     res.status(200).json({ message: 'Productos encontrados', data: productos });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -171,10 +182,7 @@ async function findByCategoriaStart(req: Request, res: Response) {
   try {
     const { categoriaId } = req.query;
     const id = Number(categoriaId);
-
-    if (!id || isNaN(id)) {
-      return res.status(400).json({ message: 'Categoría inválida' });
-    }
+    if (!id || isNaN(id)) return res.status(400).json({ message: 'Categoría inválida' });
 
     const productos = await em
       .createQueryBuilder(Producto)
@@ -189,6 +197,7 @@ async function findByCategoriaStart(req: Request, res: Response) {
   }
 }
 
+// --- Export final ---
 export {
   sanitizeProductoInput,
   findAll,
@@ -197,6 +206,8 @@ export {
   update,
   remove,
   countStock,
+  rutaUpload,
+  subirImagenProducto,
   findByNameStart,
   findByCategoriaStart
 };
