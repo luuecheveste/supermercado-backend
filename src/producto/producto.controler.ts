@@ -31,15 +31,12 @@ function sanitizeProductoInput(req: Request, res: Response, next: NextFunction) 
     descripcion: req.body.descripcion,
     precio: req.body.precio,
     stock: req.body.stock,
-    imagen: req.body.imagen,
     categoria: req.body.categoria,
     estado: req.body.estado,
   };
-
   Object.keys(req.body.sanitizedInput).forEach((key) => {
     if (req.body.sanitizedInput[key] === undefined) delete req.body.sanitizedInput[key];
   });
-
   next();
 }
 
@@ -57,7 +54,6 @@ async function findOne(req: Request, res: Response) {
   try {
     const id = Number(req.params.id);
     if (!id || isNaN(id)) return res.status(400).json({ message: 'ID inválido' });
-
     const producto = await em.findOneOrFail(Producto, { id }, { populate: ['categoria'] });
     res.status(200).json({ message: 'Producto encontrado', data: producto });
   } catch (error: any) {
@@ -75,6 +71,7 @@ async function add(req: Request, res: Response) {
   }
 }
 
+// --- Actualizar producto y reemplazar imagen ---
 async function update(req: Request, res: Response) {
   try {
     const id = Number(req.params.id);
@@ -83,14 +80,21 @@ async function update(req: Request, res: Response) {
     const productoToUpdate = await em.findOneOrFail(Producto, { id });
 
     // --- Manejo de imagen ---
-    // Si nos envían imagen = vacio -> eliminar imagen existente
-    if ('imagen' in req.body.sanitizedInput) {
-      const newImagen = req.body.sanitizedInput.imagen;
-      if (newImagen === null && productoToUpdate.imagen) {
+    if (req.file) {
+      // Eliminar imagen anterior si existe
+      if (productoToUpdate.imagen) {
         const oldPath = path.join(uploadPath, path.basename(productoToUpdate.imagen));
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-        productoToUpdate.imagen = '';
       }
+      // Guardar nueva imagen
+      productoToUpdate.imagen = `/imagenes/${req.file.filename}`;
+    } else if ('imagen' in req.body.sanitizedInput && req.body.sanitizedInput.imagen === null) {
+      // Si enviamos explicitamente imagen = null -> eliminar existente
+      if (productoToUpdate.imagen) {
+        const oldPath = path.join(uploadPath, path.basename(productoToUpdate.imagen));
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
+      productoToUpdate.imagen = '';
     }
 
     // Asignar demás campos
@@ -111,7 +115,6 @@ async function remove(req: Request, res: Response) {
     const producto = await em.findOne(Producto, { id });
     if (!producto) return res.status(404).json({ message: 'Producto no encontrado' });
 
-    // Eliminar imagen si existe
     if (producto.imagen) {
       const oldPath = path.join(uploadPath, path.basename(producto.imagen));
       if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
@@ -135,42 +138,11 @@ async function countStock(req: Request, res: Response) {
   }
 }
 
-// --- Subir o reemplazar imagen ---
-async function subirImagenProducto(req: Request, res: Response) {
-  try {
-    const id = Number(req.params.id);
-    if (!id) return res.status(400).json({ message: 'ID de producto requerido' });
-    if (!req.file) return res.status(400).json({ message: 'No se subió ninguna imagen' });
-
-    const producto = await em.findOne(Producto, { id });
-    if (!producto) return res.status(404).json({ message: 'Producto no encontrado' });
-
-    // --- Eliminar imagen anterior si existe ---
-    if (producto.imagen) {
-      const oldPath = path.join(uploadPath, path.basename(producto.imagen));
-      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-    }
-
-    // --- Guardar la nueva imagen ---
-    producto.imagen = `/imagenes/${req.file.filename}`;
-    await em.flush();
-
-    res.json({
-      message: 'Imagen subida y reemplazada',
-      filename: req.file.filename,
-      imagen: producto.imagen,
-    });
-  } catch (err: any) {
-    res.status(500).json({ message: err.message });
-  }
-}
-
 // --- Buscar ---
 async function findByNameStart(req: Request, res: Response) {
   try {
     const { q } = req.query;
     if (!q || typeof q !== 'string') return res.status(400).json({ message: 'El parámetro "q" es requerido' });
-
     const productos = await em.find(Producto, { $or: [{ name: { $like: `${q}%` } }] });
     res.status(200).json({ message: 'Productos encontrados', data: productos });
   } catch (error: any) {
@@ -207,7 +179,6 @@ export {
   remove,
   countStock,
   rutaUpload,
-  subirImagenProducto,
   findByNameStart,
   findByCategoriaStart
 };
