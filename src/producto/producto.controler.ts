@@ -8,7 +8,7 @@ import path from 'path';
 const em = orm.em;
 
 // --- Configuración Multer ---
-const uploadPath = path.join(__dirname, '../../supermercado-front-js/public/imagenes');
+const uploadPath = path.join(process.cwd(), 'supermercado-front-js/public/imagenes');
 if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
 
 const storage = multer.diskStorage({
@@ -34,9 +34,11 @@ function sanitizeProductoInput(req: Request, res: Response, next: NextFunction) 
     categoria: req.body.categoria,
     estado: req.body.estado,
   };
+
   Object.keys(req.body.sanitizedInput).forEach((key) => {
     if (req.body.sanitizedInput[key] === undefined) delete req.body.sanitizedInput[key];
   });
+
   next();
 }
 
@@ -54,6 +56,7 @@ async function findOne(req: Request, res: Response) {
   try {
     const id = Number(req.params.id);
     if (!id || isNaN(id)) return res.status(400).json({ message: 'ID inválido' });
+
     const producto = await em.findOneOrFail(Producto, { id }, { populate: ['categoria'] });
     res.status(200).json({ message: 'Producto encontrado', data: producto });
   } catch (error: any) {
@@ -71,7 +74,6 @@ async function add(req: Request, res: Response) {
   }
 }
 
-// --- Actualizar producto y reemplazar imagen ---
 async function update(req: Request, res: Response) {
   try {
     const id = Number(req.params.id);
@@ -89,7 +91,7 @@ async function update(req: Request, res: Response) {
       // Guardar nueva imagen
       productoToUpdate.imagen = `/imagenes/${req.file.filename}`;
     } else if ('imagen' in req.body.sanitizedInput && req.body.sanitizedInput.imagen === null) {
-      // Si enviamos explicitamente imagen = null -> eliminar existente
+      // Borrar imagen existente si explicitamente imagen = null
       if (productoToUpdate.imagen) {
         const oldPath = path.join(uploadPath, path.basename(productoToUpdate.imagen));
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
@@ -143,6 +145,7 @@ async function findByNameStart(req: Request, res: Response) {
   try {
     const { q } = req.query;
     if (!q || typeof q !== 'string') return res.status(400).json({ message: 'El parámetro "q" es requerido' });
+
     const productos = await em.find(Producto, { $or: [{ name: { $like: `${q}%` } }] });
     res.status(200).json({ message: 'Productos encontrados', data: productos });
   } catch (error: any) {
