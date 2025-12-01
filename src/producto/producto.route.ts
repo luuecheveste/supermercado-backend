@@ -10,7 +10,7 @@ productoRouter.get("/buscar-categoria", findByCategoriaStart);
 
 productoRouter.get("/", findAll);
 productoRouter.post("/", sanitizeProductoInput, add);
-productoRouter.put("/:id", sanitizeProductoInput, update);
+productoRouter.patch("/:id", sanitizeProductoInput, update);
 productoRouter.delete("/:id", remove);
 
 productoRouter.get("/:id", findOne);
