@@ -129,14 +129,7 @@ async function remove(req: Request, res: Response) {
 // ---------------- STOCK TOTAL ----------------
 async function countStock(req: Request, res: Response) {
   try {
-    const { all } = req.query;
-
-    const where: any = {};
-    if (!(typeof all === "string" && all.toLowerCase() === "true")) {
-      where.estado = true;
-    }
-
-    const productos = await em.find(Producto, where, { fields: ["stock"] });
+    const productos = await em.find(Producto, {}, { fields: ["stock"] });
 
     const stocktotal = productos.reduce(
       (acc, p) => acc + safeNumber((p as any).stock),
