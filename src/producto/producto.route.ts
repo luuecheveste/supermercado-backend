@@ -1,5 +1,7 @@
 import { Router } from 'express';
-import { sanitizeProductoInput, findAll, findOne, add, update, remove, countStock, rutaUpload, findByNameStart, findByCategoriaStart, subirImagenProducto,deleteImagenProducto } from './producto.controler.js';
+import { sanitizeProductoInput, findAll, findOne, add, update, remove, 
+countStock, rutaUpload, findByNameStart, findByCategoriaStart, 
+subirImagenProducto,deleteImagenProducto } from './producto.controler.js';
 
 export const productoRouter = Router();
 

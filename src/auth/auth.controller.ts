@@ -2,8 +2,8 @@ import type { Request, Response } from "express"
 import { orm } from "../shared/orm.js"
 import { Cliente } from "../cliente/cliente.entity.js"
 import { Zona } from "../zona/zona.entity.js"
-import bcrypt from "bcrypt" //libreria para encriptar contraseñas
-import jwt from "jsonwebtoken" //libreria para manejar token JWT
+import bcrypt from "bcrypt" 
+import jwt from "jsonwebtoken" 
 
 const em = orm.em
 const JWT_SECRET = process.env.JWT_SECRET;

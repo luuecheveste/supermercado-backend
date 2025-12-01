@@ -43,7 +43,6 @@ app.use('/api/venta', VentaRouter);
 app.use('/api/item-venta', ItemVentaRouter);
 app.use('/api/mercadopago', mercadoPagoRouter);
 
-// 404
 app.use((_, res) => {
   return res.status(404).send({ message: 'Resource not found' });
 });

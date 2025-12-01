@@ -2,31 +2,11 @@
 import { Request, Response, NextFunction } from "express";
 import { orm } from "../shared/orm.js";
 import { Producto } from "./producto.entity.js";
-import multer from "multer";
-import fs from "fs";
-import path from "path";
 
 const em = orm.em;
 
-// ----- MULTER -----
-const uploadPath = path.join(process.cwd(), "supermercado-front-js/public/imagenes");
-if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (_, __, cb) => cb(null, uploadPath),
-  filename: (_, file, cb) => cb(null, file.originalname),
-});
-
-const fileFilter = (_: Request, file: Express.Multer.File, cb: any) => {
-  if (file.mimetype.startsWith("image/")) cb(null, true);
-  else cb(new Error("Solo imágenes"), false);
-};
-
-const upload = multer({ storage, fileFilter });
-const rutaUpload = upload.single("imagen");
-
-// ----- Sanitizar -----
-function sanitizeProductoInput(req: Request, _: Response, next: NextFunction) {
+// ---------------- Sanitizar input ----------------
+function sanitizeProductoInput(req: Request, _res: Response, next: NextFunction) {
   req.body.sanitizedInput = {
     name: req.body.name,
     descripcion: req.body.descripcion,
@@ -34,79 +14,102 @@ function sanitizeProductoInput(req: Request, _: Response, next: NextFunction) {
     stock: req.body.stock,
     categoria: req.body.categoria,
     estado: req.body.estado,
+    imagen: req.body.imagen, // si tu entidad tiene este campo, lo dejamos como texto
   };
 
-  Object.keys(req.body.sanitizedInput).forEach((key) => {
-    if (req.body.sanitizedInput[key] === undefined)
-      delete req.body.sanitizedInput[key];
+  Object.keys(req.body.sanitizedInput).forEach((k) => {
+    if (req.body.sanitizedInput[k] === undefined) delete req.body.sanitizedInput[k];
   });
 
   next();
 }
 
-// ----- CRUD -----
+// ---------------- Helper ----------------
+function safeNumber(val: any) {
+  const n = Number(val);
+  return Number.isNaN(n) ? 0 : n;
+}
+
+// ---------------- FIND ALL con filtros ----------------
 async function findAll(req: Request, res: Response) {
   try {
-    const productos = await em.find(Producto, {}, { populate: ["categoria"], orderBy: { id: "ASC" } });
+    const { q, categoriaId, all } = req.query;
+
+    const where: any = {};
+
+    // si no es all=true solo mostramos activos
+    if (!(typeof all === "string" && all.toLowerCase() === "true")) {
+      where.estado = true;
+    }
+
+    if (q && typeof q === "string") {
+      where.name = { $like: `${q}%` };
+    }
+
+    if (categoriaId !== undefined) {
+      const cid = Number(categoriaId);
+      if (!Number.isNaN(cid)) where.categoria = cid;
+    }
+
+    const productos = await em.find(
+      Producto,
+      where,
+      { populate: ["categoria"], orderBy: { id: "ASC" } }
+    );
+
     res.status(200).json({ message: "Productos encontrados", data: productos });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
 }
 
+// ---------------- FIND ONE ----------------
 async function findOne(req: Request, res: Response) {
   try {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "ID inválido" });
 
-    const producto = await em.findOneOrFail(Producto, { id }, { populate: ["categoria"] });
+    const producto = await em.findOneOrFail(
+      Producto,
+      { id },
+      { populate: ["categoria"] }
+    );
+
     res.status(200).json({ message: "Producto encontrado", data: producto });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
 }
 
+// ---------------- ADD ----------------
 async function add(req: Request, res: Response) {
   try {
-    const producto = em.create(Producto, req.body.sanitizedInput);
+    const nuevo = em.create(Producto, req.body.sanitizedInput);
     await em.flush();
-    res.status(201).json({ message: "Producto creado", data: producto });
+    res.status(201).json({ message: "Producto creado", data: nuevo });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
 }
 
+// ---------------- UPDATE ----------------
 async function update(req: Request, res: Response) {
   try {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "ID inválido" });
 
-    const productoToUpdate = await em.findOneOrFail(Producto, { id });
+    const producto = await em.findOneOrFail(Producto, { id });
 
-    // Manejo de imagen
-    if ((req as any).file) {
-      if (productoToUpdate.imagen) {
-        const oldPath = path.join(uploadPath, path.basename(productoToUpdate.imagen));
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-      }
-      productoToUpdate.imagen = `/imagenes/${(req as any).file.filename}`;
-    } else if ("imagen" in req.body && req.body.imagen === null) {
-      if (productoToUpdate.imagen) {
-        const oldPath = path.join(uploadPath, path.basename(productoToUpdate.imagen));
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-      }
-      productoToUpdate.imagen = null as any;
-    }
-
-    em.assign(productoToUpdate, req.body.sanitizedInput);
+    em.assign(producto, req.body.sanitizedInput);
     await em.flush();
 
-    res.status(200).json({ message: "Producto actualizado", data: productoToUpdate });
+    res.status(200).json({ message: "Producto actualizado", data: producto });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
 }
 
+// ---------------- REMOVE ----------------
 async function remove(req: Request, res: Response) {
   try {
     const id = Number(req.params.id);
@@ -114,11 +117,6 @@ async function remove(req: Request, res: Response) {
 
     const producto = await em.findOne(Producto, { id });
     if (!producto) return res.status(404).json({ message: "Producto no encontrado" });
-
-    if (producto.imagen) {
-      const oldPath = path.join(uploadPath, path.basename(producto.imagen));
-      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-    }
 
     await em.removeAndFlush(producto);
 
@@ -128,81 +126,41 @@ async function remove(req: Request, res: Response) {
   }
 }
 
-// ----- Stock total -----
+// ---------------- STOCK TOTAL ----------------
 async function countStock(req: Request, res: Response) {
   try {
-    const result = await em.execute("SELECT SUM(stock) as stocktotal FROM producto");
-    const stocktotal = Number(result[0]?.stocktotal ?? 0);
+    const { all } = req.query;
+
+    const where: any = {};
+    if (!(typeof all === "string" && all.toLowerCase() === "true")) {
+      where.estado = true;
+    }
+
+    const productos = await em.find(Producto, where, { fields: ["stock"] });
+
+    const stocktotal = productos.reduce(
+      (acc, p) => acc + safeNumber((p as any).stock),
+      0
+    );
+
     res.status(200).json({ stocktotal });
-  } catch {
-    res.status(500).json({ stocktotal: 0 });
-  }
-}
-
-// ----- Subir imagen -----
-async function subirImagenProducto(req: Request, res: Response) {
-  try {
-    const id = Number(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ message: "ID inválido" });
-
-    if (!(req as any).file)
-      return res.status(400).json({ message: "No se subió ninguna imagen" });
-
-    const producto = await em.findOne(Producto, { id });
-    if (!producto) return res.status(404).json({ message: "Producto no encontrado" });
-
-    if (producto.imagen) {
-      const oldPath = path.join(uploadPath, path.basename(producto.imagen));
-      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-    }
-
-    producto.imagen = `/imagenes/${(req as any).file.filename}`;
-    await em.flush();
-
-    res.status(200).json({
-      message: "Imagen subida",
-      filename: (req as any).file.filename,
-      imagen: producto.imagen,
-      data: producto,
-    });
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ stocktotal: 0, error: error.message });
   }
 }
 
-// ----- Eliminar imagen -----
-async function deleteImagenProducto(req: Request, res: Response) {
-  try {
-    const id = Number(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ message: "ID inválido" });
-
-    const producto = await em.findOne(Producto, { id });
-    if (!producto) return res.status(404).json({ message: "Producto no encontrado" });
-
-    if (producto.imagen) {
-      const oldPath = path.join(uploadPath, path.basename(producto.imagen));
-      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-    }
-
-    producto.imagen = null as any;
-    await em.flush();
-
-    res.status(200).json({ message: "Imagen eliminada", data: producto });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
-  }
-}
-
-// ----- Buscar -----
+// ---------------- BUSCAR POR NOMBRE ----------------
 async function findByNameStart(req: Request, res: Response) {
   try {
     const { q } = req.query;
     if (!q || typeof q !== "string")
       return res.status(400).json({ message: 'Parámetro "q" requerido' });
 
-    const productos = await em.find(Producto, {
-      $or: [{ name: { $like: `${q}%` } }],
-    });
+    const productos = await em.find(
+      Producto,
+      { name: { $like: `${q}%` } },
+      { populate: ["categoria"], orderBy: { id: "ASC" } }
+    );
 
     res.status(200).json({ message: "Productos encontrados", data: productos });
   } catch (error: any) {
@@ -210,17 +168,18 @@ async function findByNameStart(req: Request, res: Response) {
   }
 }
 
+// ---------------- BUSCAR POR CATEGORIA ----------------
 async function findByCategoriaStart(req: Request, res: Response) {
   try {
     const id = Number(req.query.categoriaId);
-    if (isNaN(id)) return res.status(400).json({ message: "Categoría inválida" });
+    if (isNaN(id))
+      return res.status(400).json({ message: "Categoría inválida" });
 
-    const productos = await em
-      .createQueryBuilder(Producto)
-      .select("*")
-      .where({ categoria: id })
-      .leftJoinAndSelect("categoria", "c")
-      .getResultList();
+    const productos = await em.find(
+      Producto,
+      { categoria: id },
+      { populate: ["categoria"], orderBy: { id: "ASC" } }
+    );
 
     res.status(200).json({ message: "Productos encontrados", data: productos });
   } catch (error: any) {
@@ -228,7 +187,6 @@ async function findByCategoriaStart(req: Request, res: Response) {
   }
 }
 
-// ----- Export -----
 export {
   sanitizeProductoInput,
   findAll,
@@ -237,9 +195,6 @@ export {
   update,
   remove,
   countStock,
-  rutaUpload,
-  subirImagenProducto,
-  deleteImagenProducto,
   findByNameStart,
   findByCategoriaStart,
 };
