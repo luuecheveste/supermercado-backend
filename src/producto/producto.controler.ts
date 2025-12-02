@@ -1,4 +1,3 @@
-// src/producto/producto.controller.ts
 import { Request, Response, NextFunction } from "express";
 import { orm } from "../shared/orm.js";
 import { Producto } from "./producto.entity.js";
@@ -14,7 +13,7 @@ function sanitizeProductoInput(req: Request, _res: Response, next: NextFunction)
     stock: req.body.stock,
     categoria: req.body.categoria,
     estado: req.body.estado,
-    imagen: req.body.imagen, // si tu entidad tiene este campo, lo dejamos como texto
+    imagen: req.body.imagen,
   };
 
   Object.keys(req.body.sanitizedInput).forEach((k) => {
@@ -37,8 +36,8 @@ async function findAll(req: Request, res: Response) {
 
     const where: any = {};
 
-    // si no es all=true solo mostramos activos
     if (!(typeof all === "string" && all.toLowerCase() === "true")) {
+      // Por defecto: solo productos activos
       where.estado = true;
     }
 
@@ -129,12 +128,13 @@ async function remove(req: Request, res: Response) {
 // ---------------- STOCK TOTAL ----------------
 async function countStock(req: Request, res: Response) {
   try {
-    const productos = await em.find(Producto, {}, { fields: ["stock"] });
+    // Traemos todos los productos, activos e inactivos
+    const productos = await em.find(Producto, {});
 
-    const stocktotal = productos.reduce(
-      (acc, p) => acc + safeNumber((p as any).stock),
-      0
-    );
+    const stocktotal = productos.reduce((acc, p) => {
+      const stockNum = Number(p.stock);
+      return acc + (isNaN(stockNum) ? 0 : stockNum);
+    }, 0);
 
     res.status(200).json({ stocktotal });
   } catch (error: any) {
@@ -145,13 +145,19 @@ async function countStock(req: Request, res: Response) {
 // ---------------- BUSCAR POR NOMBRE ----------------
 async function findByNameStart(req: Request, res: Response) {
   try {
-    const { q } = req.query;
+    const { q, all } = req.query;
     if (!q || typeof q !== "string")
       return res.status(400).json({ message: 'Parámetro "q" requerido' });
 
+    const where: any = { name: { $like: `${q}%` } };
+
+    if (!(typeof all === "string" && all.toLowerCase() === "true")) {
+      where.estado = true; // solo activos si no se pasa all=true
+    }
+
     const productos = await em.find(
       Producto,
-      { name: { $like: `${q}%` } },
+      where,
       { populate: ["categoria"], orderBy: { id: "ASC" } }
     );
 
@@ -165,12 +171,18 @@ async function findByNameStart(req: Request, res: Response) {
 async function findByCategoriaStart(req: Request, res: Response) {
   try {
     const id = Number(req.query.categoriaId);
+    const { all } = req.query;
     if (isNaN(id))
       return res.status(400).json({ message: "Categoría inválida" });
 
+    const where: any = { categoria: id };
+    if (!(typeof all === "string" && all.toLowerCase() === "true")) {
+      where.estado = true; // solo activos si no se pasa all=true
+    }
+
     const productos = await em.find(
       Producto,
-      { categoria: id },
+      where,
       { populate: ["categoria"], orderBy: { id: "ASC" } }
     );
 
