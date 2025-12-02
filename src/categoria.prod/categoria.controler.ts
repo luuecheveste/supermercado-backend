@@ -55,13 +55,24 @@ async function update(req: Request, res: Response) {
 async function remove(req: Request, res: Response) {
   try {
     const id = Number.parseInt(req.params.id)
-    const categorias = em.getReference(Categoria, id)
-    await em.removeAndFlush(categorias)
-    res.status(200).send({ message: 'Categoria deleted' })
+    const categoria = await em.findOne(Categoria, { id }, { populate: ['productos'] })
+
+    if (!categoria) {
+      return res.status(404).json({ message: 'Categoría no encontrada' })
+    }
+    if (categoria.productos?.length > 0) {
+      return res.status(400).json({ 
+        message: 'No se puede eliminar la categoría porque tiene productos asociados' 
+      })
+    }
+    await em.removeAndFlush(categoria)
+    res.status(200).json({ message: 'Categoría eliminada correctamente' })
   } catch (error: any) {
+    console.error(error)
     res.status(500).json({ message: error.message })
   }
 }
+
 
 async function findByNameStart(req: Request, res: Response) {
   try {
