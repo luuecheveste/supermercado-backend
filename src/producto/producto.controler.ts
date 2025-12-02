@@ -32,14 +32,9 @@ function safeNumber(val: any) {
 // ---------------- FIND ALL con filtros ----------------
 async function findAll(req: Request, res: Response) {
   try {
-    const { q, categoriaId, all } = req.query;
+    const { q, categoriaId } = req.query;
 
     const where: any = {};
-
-    if (!(typeof all === "string" && all.toLowerCase() === "true")) {
-      // Por defecto: solo productos activos
-      where.estado = true;
-    }
 
     if (q && typeof q === "string") {
       where.name = { $like: `${q}%` };
